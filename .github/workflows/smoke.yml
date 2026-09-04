@@ -10,6 +10,20 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v5
+      - name: Inspect token shape (value never printed)
+        env:
+          T: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          set +e
+          trimmed=$(printf '%s' "$T" | tr -d '[:space:]')
+          echo "length=${#T} trimmed_length=${#trimmed} prefix=${T:0:12}"
+          printf '%s' "$T" | grep -q '[[:space:]]' && echo "contains_whitespace=yes" || echo "contains_whitespace=no"
+          for v in raw trimmed; do
+            if [ "$v" = raw ]; then tok="$T"; else tok="$trimmed"; fi
+            code=$(curl -s -o /tmp/resp.json -w '%{http_code}' https://api.anthropic.com/v1/models \
+              -H "Authorization: Bearer $tok" -H "anthropic-version: 2023-06-01" -H "anthropic-beta: oauth-2025-04-20")
+            echo "api_models_${v}=$code $(head -c 200 /tmp/resp.json)"
+          done
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
