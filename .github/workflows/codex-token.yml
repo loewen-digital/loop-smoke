@@ -1,0 +1,19 @@
+name: Codex token check
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify CODEX_TRIGGER_TOKEN
+        env:
+          T: ${{ secrets.CODEX_TRIGGER_TOKEN }}
+        run: |
+          echo "raw length: ${#T}"
+          GH_TOKEN=$(printf '%s' "$T" | tr -d '[:space:]')
+          echo "trimmed length: ${#GH_TOKEN}"
+          if [ -z "$GH_TOKEN" ]; then echo "secret empty"; exit 1; fi
+          echo "::add-mask::$GH_TOKEN"; export GH_TOKEN
+          echo "login: $(gh api user --jq .login)"
+          echo "permissions on this repo: $(gh api repos/${{ github.repository }} --jq '.permissions')"
+          echo "can list PRs: $(gh pr list --repo ${{ github.repository }} --state all --limit 1 --json number --jq 'length')"
